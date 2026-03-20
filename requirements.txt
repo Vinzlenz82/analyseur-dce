@@ -11,56 +11,6 @@ PyMuPDF==1.24.14
 
 
 # ═══════════════════════════════════════
-# Dockerfile
-# ═══════════════════════════════════════
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["python", "main.py"]
-
-
-# ═══════════════════════════════════════
-# Structure du projet
-# ═══════════════════════════════════════
-analyseur-dce/
-├── main.py               ← backend FastAPI
-├── requirements.txt
-├── Dockerfile
-├── .env                  ← ANTHROPIC_API_KEY=sk-ant-...  (jamais commité)
-├── .gitignore            ← contient .env
-└── static/               ← front React buildé
-    └── index.html
-
-
-# ═══════════════════════════════════════
-# DÉPLOIEMENT RAILWAY — étape par étape
-# ═══════════════════════════════════════
-
-# 1. Installer Railway CLI
-npm install -g @railway/cli
-
-# 2. Init projet
-railway login
-railway init   # choisir "Empty project"
-
-# 3. Lier le dossier
-cd analyseur-dce
-railway link
-
-# 4. Ajouter la clé API (JAMAIS dans le code)
-railway variables set ANTHROPIC_API_KEY=sk-ant-XXXXXXXX
-
-# 5. Déployer
-railway up
-
-# → Railway te donne une URL publique type :
-#   https://analyseur-dce-production.up.railway.app
-
-
-# ═══════════════════════════════════════
 # TEST EN LOCAL
 # ═══════════════════════════════════════
 
