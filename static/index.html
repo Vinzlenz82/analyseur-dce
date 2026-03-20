@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyseur DCE BTP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#0f172a,#1e3a5f);min-height:100vh;color:#f1f5f9}
+  .app{max-width:860px;margin:0 auto;padding:16px}
+  h1{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+  .sub{color:#93c5fd;font-size:.85rem;margin-bottom:20px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
+  .tab.active{background:#2563eb;color:#fff}
+  .tab.inactive{background:#1e293b;color:#94a3b8}
+  .tab.inactive:hover{background:#334155}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px}
+  .dropzone{border:2px dashed #475569;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:.2s}
+  .dropzone:hover,.dropzone.over{border-color:#3b82f6;background:rgba(59,130,246,.08)}
+  .dropzone-icon{font-size:2.5rem;margin-bottom:10px}
+  .dropzone-title{font-size:1rem;font-weight:600;margin-bottom:4px}
+  .dropzone-sub{color:#64748b;font-size:.8rem}
+  input[type=file]{display:none}
+  .file-list{max-height:130px;overflow-y:auto;margin-top:10px}
+  .file-item{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #334155;font-size:.8rem}
+  .ext-badge{padding:2px 6px;border-radius:4px;font-size:.7rem;font-weight:700;font-family:monospace}
+  .ext-pdf{background:#7f1d1d;color:#fca5a5}
+  .ext-other{background:#374151;color:#9ca3af}
+  .warn{background:rgba(234,179,8,.1);border:1px solid #854d0e;border-radius:8px;padding:8px 12px;color:#fbbf24;font-size:.78rem;margin-top:8px}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .opt-group label{display:block;font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .btn-group{display:flex;gap:6px}
+  .btn{padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.82rem;font-weight:600;transition:.2s;flex:1;text-align:center}
+  .btn-sel{background:#2563eb;color:#fff}
+  .btn-unsel{background:#0f172a;color:#64748b}
+  .btn-unsel:hover{background:#1e293b}
+  .btn-primary{background:#2563eb;color:#fff;padding:12px;border-radius:10px;border:none;cursor:pointer;font-size:.95rem;font-weight:700;width:100%;transition:.2s}
+  .btn-primary:hover:not(:disabled){background:#1d4ed8}
+  .btn-primary:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+  .steps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+  .step-pill{padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+  .step-done{background:#14532d;color:#86efac}
+  .step-active{background:#1d4ed8;color:#fff}
+  .step-todo{background:#1e293b;color:#64748b}
+  .error{background:rgba(239,68,68,.1);border:1px solid #991b1b;border-radius:8px;padding:10px;color:#f87171;font-size:.83rem;margin-top:8px}
+  .loader{text-align:center;padding:20px;color:#60a5fa;font-size:.9rem}
+  .spinner{display:inline-block;width:20px;height:20px;border:3px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Results */
+  .result-wrap{background:#fff;color:#111;border-radius:12px;padding:16px}
+  .result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+  .result-title{font-size:1.1rem;font-weight:700;color:#1e293b}
+  .result-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .btn-sm{padding:6px 12px;border-radius:7px;border:none;cursor:pointer;font-size:.78rem;font-weight:600}
+  .btn-green{background:#16a34a;color:#fff}
+  .btn-blue{background:#2563eb;color:#fff}
+  .btn-gray{background:#e2e8f0;color:#374151}
+  .btn-dl{background:#0d9488;color:#fff}
+  .section{border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;overflow:hidden}
+  .section-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;cursor:pointer}
+  .section-head:hover{background:#f1f5f9}
+  .section-label{font-weight:600;font-size:.88rem;color:#374151}
+  .section-body{padding:10px 14px}
+  .pill-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:.82rem}
+  .pill-row:last-child{border:none}
+  .pill-key{color:#64748b;font-size:.78rem;width:140px;flex-shrink:0}
+  .pill-val{color:#1e293b}
+  .badge{padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;display:inline-block}
+  .badge-go{background:#dcfce7;color:#166534}
+  .badge-nogo{background:#fee2e2;color:#991b1b}
+  .badge-affiner{background:#fef9c3;color:#854d0e}
+  .badge-rouge{background:#fee2e2;color:#991b1b}
+  .badge-orange{background:#ffedd5;color:#9a3412}
+  .badge-jaune{background:#fef9c3;color:#854d0e}
+  .risk-row{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:.8rem}
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;color:#374151}
+  td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
+  .missing{background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px 10px;font-size:.78rem;color:#c2410c;margin-top:6px}
+  /* History */
+  .hist-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1e293b;border:1px solid #334155;border-radius:10px;margin-bottom:8px;gap:8px}
+  .hist-info .hist-title{font-weight:600;font-size:.9rem}
+  .hist-info .hist-meta{color:#64748b;font-size:.75rem;margin-top:2px}
+  .hist-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+  .empty{text-align:center;color:#475569;padding:40px}
+  .progress-bar{height:4px;background:#334155;border-radius:2px;margin-bottom:12px;overflow:hidden}
+  .progress-fill{height:100%;background:#3b82f6;border-radius:2px;transition:width .4s}
+  @media(max-width:500px){.opts{grid-template-columns:1fr}.result-actions{justify-content:flex-start}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+// ── Config ───────────────────────────────────────────────────
+// En prod Railway, l'API est sur le même domaine → '/api/analyze'
+// En dev local → changer pour 'http://localhost:8000/api/analyze'
+const API_URL = '/api/analyze';
+
+const STEPS = ['Identité marché','Critères sélection','Obligations CCAP','Exigences CCTP','Analyse DPGF','Risques & Reco'];
+
+// ── Helpers ──────────────────────────────────────────────────
+function recColor(r=''){
+  const v = r.toLowerCase();
+  if(v.includes('no')) return 'nogo';
+  if(v.includes('go')) return 'go';
+  return 'affiner';
+}
+function flagColor(r=''){
+  const v = r?.toLowerCase();
+  if(v==='rouge') return 'rouge';
+  if(v==='orange') return 'orange';
+  if(v==='jaune') return 'jaune';
+  return 'jaune';
+}
+
+// ── Section pliable ──────────────────────────────────────────
+function Sec({title, icon, children}){
+  const [open, setOpen] = React.useState(true);
+  return (
+    <div className="section">
+      <div className="section-head" onClick={()=>setOpen(!open)}>
+        <span className="section-label">{icon} {title}</span>
+        <span style={{color:'#94a3b8'}}>{open?'▲':'▼'}</span>
+      </div>
+      {open && <div className="section-body">{children}</div>}
+    </div>
+  );
+}
+
+// ── Affichage résultats ──────────────────────────────────────
+function ResultView({data}){
+  if(!data) return null;
+  const d = data;
+  return (
+    <div>
+      {d.recommandation && (
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#f8fafc',borderRadius:8,marginBottom:10,flexWrap:'wrap'}}>
+          <span style={{fontWeight:700,color:'#374151'}}>Recommandation :</span>
+          <span className={`badge badge-${recColor(d.recommandation)}`}>{d.recommandation}</span>
+          {d.recommandation_motif && <span style={{fontSize:'.8rem',color:'#64748b'}}>{d.recommandation_motif}</span>}
+        </div>
+      )}
+
+      <Sec title="Identité du marché" icon="🏗️">
+        {[['Acheteur','acheteur'],['Objet','objet'],['Lot(s)','lots'],['Corps d\'état','corps_etat'],
+          ['Montant estimé','montant_estime'],['Type','type_marche'],['Délai','delai'],
+          ['Date limite','date_limite'],['Démarrage','demarrage'],['Lieu','lieu']].map(([l,k])=>
+          d[k] ? <div className="pill-row" key={k}><span className="pill-key">{l}</span><span className="pill-val">{d[k]}</span></div> : null
+        )}
+        {d.pieces_manquantes?.length>0 && (
+          <div className="missing">⚠️ Pièces manquantes : {d.pieces_manquantes.join(', ')}</div>
+        )}
+      </Sec>
+
+      {d.criteres?.length>0 && (
+        <Sec title="Critères de sélection" icon="📊">
+          {d.criteres.map((c,i)=>(
+            <div className="pill-row" key={i}>
+              <span className="pill-key">{c.nom}</span>
+              <span className="pill-val" style={{fontWeight:700,color:'#2563eb'}}>{c.poids}</span>
+            </div>
+          ))}
+        </Sec>
+      )}
+
+      {(d.risques_bloquants?.length>0||d.risques_vigilance?.length>0||d.points_a_clarifier?.length>0) && (
+        <Sec title="Points d'attention" icon="⚠️">
+          {d.risques_bloquants?.map((r,i)=>(
+            <div className="risk-row" key={i}><span className="badge badge-rouge">🔴 Bloquant</span><span>{r}</span></div>
+          ))}
+          {d.risques_vigilance?.map((r,i)=>(
+            <div className="risk-row" key={i}><span className="badge badge-orange">🟠 Vigilance</span><span>{r}</span></div>
+          ))}
+          {d.points_a_clarifier?.map((r,i)=>(
+            <div className="risk-row" key={i}><span className="badge badge-jaune">🟡 À clarifier</span><span>{r}</span></div>
+          ))}
+        </Sec>
+      )}
+
+      {(d.dpgf_postes||d.postes)?.length>0 && (
+        <Sec title="Postes DPGF clés" icon="💰">
+          <div style={{overflowX:'auto'}}>
+            <table>
+              <thead><tr>{['Libellé','Unité','Qté','Risque'].map(h=><th key={h}>{h}</th>)}</tr></thead>
+              <tbody>
+                {(d.dpgf_postes||d.postes||[]).map((p,i)=>(
+                  <tr key={i}>
+                    <td>{p.libelle}</td><td>{p.unite}</td><td>{p.qte}</td>
+                    <td><span className={`badge badge-${flagColor(p.risque)}`}>{p.risque}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Sec>
+      )}
+
+      {d.questions_ao?.length>0 && (
+        <Sec title="Questions à envoyer à l'acheteur" icon="❓">
+          <ol style={{paddingLeft:16}}>
+            {d.questions_ao.map((q,i)=>(
+              <li key={i} style={{fontSize:'.82rem',color:'#374151',marginBottom:4}}>
+                {typeof q==='string'?q:q.texte}
+                {q?.piece && <span style={{color:'#94a3b8',marginLeft:6}}>({q.piece})</span>}
+              </li>
+            ))}
+          </ol>
+        </Sec>
+      )}
+    </div>
+  );
+}
+
+// ── App principale ───────────────────────────────────────────
+function App(){
+  const [files,   setFiles]   = React.useState([]);
+  const [mode,    setMode]    = React.useState('auto');
+  const [output,  setOutput]  = React.useState('both');
+  const [step,    setStep]    = React.useState(0);
+  const [prevData,setPrevData]= React.useState({});
+  const [loading, setLoading] = React.useState(false);
+  const [loadMsg, setLoadMsg] = React.useState('');
+  const [result,  setResult]  = React.useState(null);
+  const [dlLinks, setDlLinks] = React.useState({});
+  const [history, setHistory] = React.useState([]);
+  const [tab,     setTab]     = React.useState('analyse');
+  const [error,   setError]   = React.useState(null);
+  const [drag,    setDrag]    = React.useState(false);
+  const fileRef = React.useRef();
+
+  const hasPDF = files.some(f=>f.isPDF);
+  const nonPDF = files.filter(f=>!f.isPDF);
+
+  function handleFiles(raw){
+    const list = Array.from(raw).map(f=>({
+      file:f, name:f.name,
+      isPDF:f.name.toLowerCase().endsWith('.pdf'),
+      isZIP:f.name.toLowerCase().endsWith('.zip'),
+      ext:f.name.split('.').pop().toUpperCase()
+    }));
+    setFiles(list);
+    setResult(null); setDlLinks({}); setStep(0); setPrevData({}); setError(null);
+  }
+
+  async function runAnalysis(){
+    if(!hasPDF && !files.some(f=>f.isZIP)){setError('Aucun fichier PDF ou ZIP sélectionné');return;}
+    setLoading(true); setError(null);
+    setLoadMsg(mode==='auto'?'Analyse complète…':`Étape ${step+1}/6 : ${STEPS[step]}…`);
+
+    const fd = new FormData();
+    files.forEach(f=>fd.append('files',f.file));
+    fd.append('mode',mode);
+    fd.append('output',output);
+    fd.append('step',String(step));
+    fd.append('previous_data',JSON.stringify(prevData));
+
+    try{
+      const res = await fetch(API_URL,{method:'POST',body:fd});
+      if(!res.ok){const t=await res.text();throw new Error(t);}
+      const json = await res.json();
+      const merged = {...prevData,...json.result};
+      setResult(merged);
+      setPrevData(merged);
+
+      // Liens de téléchargement
+      const links={};
+      if(json.files?.word)  links.word  = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;hex,${json.files.word}`;
+      if(json.files?.excel) links.excel = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;hex,${json.files.excel}`;
+      setDlLinks(links);
+
+      if(mode==='guided' && step<5){
+        setStep(s=>s+1);
+      } else {
+        addHistory(merged);
+      }
+    }catch(e){setError(e.message||'Erreur serveur');}
+    setLoading(false); setLoadMsg('');
+  }
+
+  function addHistory(data){
+    setHistory(h=>[{
+      id:Date.now(),
+      date:new Date().toLocaleString('fr-FR'),
+      objet:data.objet||'DCE sans titre',
+      acheteur:data.acheteur||'—',
+      recommandation:data.recommandation||'—',
+      data, dl:dlLinks
+    },...h]);
+  }
+
+  function downloadHex(hexStr, filename, mime){
+    // Convertir hex → blob → télécharger
+    const bytes = new Uint8Array(hexStr.match(/.{1,2}/g).map(b=>parseInt(b,16)));
+    const blob = new Blob([bytes],{type:mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function reset(){setFiles([]);setResult(null);setDlLinks({});setStep(0);setPrevData({});setError(null);}
+
+  return (
+    <div className="app">
+      <h1>🏗️ Analyseur DCE</h1>
+      <p className="sub">Marchés publics BTP — Analyse automatique par IA</p>
+
+      <div className="tabs">
+        {[['analyse','📄 Analyse'],['history',`📁 Historique (${history.length})`]].map(([v,l])=>(
+          <button key={v} className={`tab ${tab===v?'active':'inactive'}`} onClick={()=>setTab(v)}>{l}</button>
+        ))}
+      </div>
+
+      {tab==='history' ? (
+        <div>
+          {history.length===0 && <div className="empty">Aucune analyse enregistrée</div>}
+          {history.map(h=>(
+            <div className="hist-item" key={h.id}>
+              <div className="hist-info">
+                <div className="hist-title">{h.objet}</div>
+                <div className="hist-meta">{h.acheteur} · {h.date}</div>
+              </div>
+              <div className="hist-actions">
+                <span className={`badge badge-${recColor(h.recommandation)}`}>{h.recommandation}</span>
+                <button className="btn-sm btn-blue" onClick={()=>{setResult(h.data);setDlLinks(h.dl||{});setTab('analyse');}}>Revoir</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ):(
+        <div>
+          {/* Upload */}
+          {!result && (
+            <div
+              className={`dropzone ${drag?'over':''}`}
+              onDragOver={e=>{e.preventDefault();setDrag(true);}}
+              onDragLeave={()=>setDrag(false)}
+              onDrop={e=>{e.preventDefault();setDrag(false);handleFiles(e.dataTransfer.files);}}
+              onClick={()=>fileRef.current.click()}>
+              <input ref={fileRef} type="file" multiple accept=".pdf,.zip,.doc,.docx,.rtf,.xls,.xlsx" onChange={e=>handleFiles(e.target.files)}/>
+              <div className="dropzone-icon">📂</div>
+              <div className="dropzone-title">Glisse ton DCE ici ou appuie pour parcourir</div>
+              <div className="dropzone-sub">PDF, ZIP (sous-dossiers supportés), DOC, RTF, XLS</div>
+            </div>
+          )}
+
+          {/* Liste fichiers */}
+          {files.length>0 && !result && (
+            <div className="card">
+              <div style={{fontSize:'.85rem',fontWeight:600,marginBottom:8,color:'#94a3b8'}}>
+                📎 {files.length} fichier(s) — {files.filter(f=>f.isPDF).length} PDF analysables
+              </div>
+              <div className="file-list">
+                {files.map((f,i)=>(
+                  <div className="file-item" key={i}>
+                    <span className={`ext-badge ${f.isPDF?'ext-pdf':'ext-other'}`}>{f.ext}</span>
+                    <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'#cbd5e1'}}>{f.name}</span>
+                    <span>{f.isPDF||f.isZIP?'✅':'⚠️'}</span>
+                  </div>
+                ))}
+              </div>
+              {nonPDF.filter(f=>!f.isZIP).length>0 && (
+                <div className="warn">⚠️ Fichiers DOC/RTF/XLS détectés : convertissez-les en PDF pour une analyse complète.</div>
+              )}
+            </div>
+          )}
+
+          {/* Options */}
+          {(hasPDF||files.some(f=>f.isZIP)) && !result && (
+            <div className="card">
+              <div className="opts">
+                <div className="opt-group">
+                  <label>Mode d'analyse</label>
+                  <div className="btn-group">
+                    {[['auto','⚡ Full auto'],['guided','🔍 Guidé']].map(([v,l])=>(
+                      <button key={v} className={`btn ${mode===v?'btn-sel':'btn-unsel'}`} onClick={()=>setMode(v)}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="opt-group">
+                  <label>Format de sortie</label>
+                  <div className="btn-group">
+                    {[['word','📄 Word'],['excel','📊 Excel'],['both','Les deux']].map(([v,l])=>(
+                      <button key={v} className={`btn ${output===v?'btn-sel':'btn-unsel'}`} onClick={()=>setOutput(v)}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {mode==='guided' && (
+                <div className="steps" style={{marginBottom:10}}>
+                  {STEPS.map((s,i)=>(
+                    <span key={i} className={`step-pill ${i<step?'step-done':i===step?'step-active':'step-todo'}`}>
+                      {i<step?'✓':i+1} {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {loading && (
+                <div style={{marginBottom:8}}>
+                  <div className="progress-bar"><div className="progress-fill" style={{width:mode==='guided'?`${((step)/6)*100}%`:'60%'}}/></div>
+                </div>
+              )}
+
+              <button className="btn-primary" onClick={runAnalysis} disabled={loading}>
+                {loading ? <><span className="spinner"/>  {loadMsg}</> :
+                  mode==='auto' ? '🚀 Lancer l\'analyse complète' :
+                  step===0 ? '▶ Démarrer l\'analyse guidée' : `▶ Analyser : ${STEPS[step]}`}
+              </button>
+            </div>
+          )}
+
+          {error && <div className="error">⚠️ {error}</div>}
+
+          {/* Résultats */}
+          {result && (
+            <div className="result-wrap">
+              <div className="result-header">
+                <span className="result-title">Résultats de l'analyse</span>
+                <div className="result-actions">
+                  {mode==='guided' && step<6 && (
+                    <button className="btn-sm btn-blue" onClick={runAnalysis} disabled={loading}>
+                      {loading?'…':`▶ Suite : ${STEPS[step]}`}
+                    </button>
+                  )}
+                  {dlLinks.word && (
+                    <button className="btn-sm btn-dl" onClick={()=>downloadHex(
+                      dlLinks.word.split(',')[1],'analyse_dce.docx',
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    )}>⬇ Word</button>
+                  )}
+                  {dlLinks.excel && (
+                    <button className="btn-sm btn-green" onClick={()=>downloadHex(
+                      dlLinks.excel.split(',')[1],'pilotage_ao.xlsx',
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )}>⬇ Excel</button>
+                  )}
+                  <button className="btn-sm btn-gray" onClick={reset}>↩ Nouveau</button>
+                </div>
+              </div>
+              <ResultView data={result}/>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
